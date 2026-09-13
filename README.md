@@ -1,183 +1,376 @@
-IM not really upkeeping this i dont have time, i made this quickly with help from ai when we were stuck, and little problems that anybody has ask chat gpt its all i coukd do for you anyways
-
 # LibreGrab M4B Creator
 
-A cross-platform tool designed to convert Libby audiobook downloads into M4B format with proper chapter markers. This tool automatically processes audio files and metadata to create professionally formatted M4B audiobooks that work great with audiobook players like Apple Books, Plex, and more.
+LibreGrab M4B Creator converts Libby/OverDrive audiobook downloads into `.m4b` audiobooks with chapter markers, 
+audiobook metadata, and optional embedded cover art.
 
-Perfect for processing audiobooks downloaded from Libby (Overdrive) into a format compatible with most audiobook players while preserving chapter information.
-
-## Quick Start
-
-1. Install FFmpeg (see Prerequisites section)
-2. Make the script executable (one-time setup):
-```bash
-chmod +x convert_audiobook.sh
-```
-3. Run the script and drag-and-drop one or more audiobook folders after the command:
-```bash
-./convert_audiobook.sh <drag folders here>          # Process multiple folders
-./convert_audiobook.sh --output-dir ~/Books <folders>  # Specify output directory
-```
-
-## Getting Audiobook Files
-
-This tool is designed to work with audiobook files downloaded from Libby/Overdrive using the LibreGrab userscript, available at https://greasyfork.org/en/scripts/498782-libregrab.
-
-Files downloaded using LibreGrab will already be in the correct format with proper metadata structure, which ensures optimal compatibility with this script. This tool is specifically optimized for processing audiobooks obtained through LibreGrab.
+It is designed for audiobooks downloaded with LibreGrab, but it can also process any folder of `.mp3` files. 
+When metadata is available, the scripts use it for accurate chapter names, title, author, and output filename. 
+When metadata is not available, the scripts fall back to creating chapters from the MP3 filenames.
 
 ## Features
 
-- Cross-platform support (Windows PowerShell and Unix/Linux shell)
-- Specifically designed for Libby audiobook downloads
-- Converts MP3 files to M4B format
-- Automatically creates chapter markers
-- Preserves audio quality
-- Maintains original audio bitrate
-- Supports metadata inclusion
-- Multiple folder support (process multiple audiobooks in one command)
-- Easy to use with a simple command
-- Automatically moves completed audiobooks to ~/totag directory
-- Handles file/directory names with spaces and special characters
-- Progress tracking during conversion
+- Converts one or more audiobook folders from MP3 files to a single M4B file
+- Supports macOS/Linux via `convert_audiobook.sh`
+- Supports Windows via `convert_audiobook.ps1`
+- Creates chapter markers from LibreGrab metadata when available
+- Falls back to MP3 filenames for chapters when metadata is missing
+- Reads metadata from:
+  - `metadata/metadata.json`
+  - `metadata.json`
+  - `chapters.json`
+- Embeds cover art when present in the metadata folder
+- Uses title and author metadata for the output filename when available
+- Supports processing multiple audiobook folders in one command
+- Supports passing a parent folder containing multiple audiobook subfolders
+- Handles paths with spaces and many special characters
+- Saves output to each input folder's `converted` directory by default
+- Supports a custom output directory
+- Includes a Telegram-compatible output mode
 
 ## Prerequisites
 
-1. FFmpeg is required for audio conversion:
-- macOS: `brew install ffmpeg`
-- Linux: `sudo apt-get install ffmpeg`
-- Windows: Download from https://ffmpeg.org/download.html
+### Required
 
-2. Create the ~/totag directory for completed audiobooks:
-```bash
-mkdir -p ~/totag
+Install FFmpeg:
+
+macOS using Homebrew:
+```shell
+brew install ffmpeg
 ```
+
+Debian/Ubuntu Linux:
+```shell
+sudo apt-get update sudo apt-get install ffmpeg python3
+```
+
+Windows:
+
+1. Download and install [FFmpeg](https://ffmpeg.org/download.html)
+2. Ensure `ffmpeg` is available in your `PATH`
+
+[Python 3](https://www.python.org/) is also required.
+
+The scripts use Python to inspect audio duration and process metadata. On Windows, either `python` or the 
+Python launcher `py` can be used. On macOS/Linux, either `python3` or `python` can be used.
+
+### Optional
+
+On Unix-like systems, if this repository contains a `.venv/bin/python`, the shell script will use it automatically.
+
+On Windows, if this repository contains `.venv\Scripts\python.exe`, the PowerShell script will use it automatically.
+
+## Getting Audiobook Files
+
+This tool is optimized for audiobooks downloaded from Libby/OverDrive using 
+[LibreGrab](https://greasyfork.org/en/scripts/498782-libregrab).
+
+LibreGrab downloads usually include MP3 files and a metadata folder in the structure expected by these scripts.
 
 ## Installation
 
-### Unix/Linux/macOS
-1. Clone or download this repository
-2. Open Terminal
-3. Navigate to the downloaded folder
-4. Make the script executable:
-```bash
+### macOS/Linux
+
+1. Clone or download this repository.
+2. Open Terminal.
+3. Navigate to the repository folder.
+4. Make the shell script executable:
+```shell
 chmod +x convert_audiobook.sh
+```
+5. Confirm prerequisites are installed:
+```shell
+ffmpeg -version ffprobe -version python3 --version
 ```
 
 ### Windows
-1. Clone or download this repository
-2. Ensure PowerShell execution policy allows local scripts:
+
+1. Clone or download this repository.
+2. Install FFmpeg and make sure `ffmpeg` is in your `PATH`.
+3. Install [Python 3](https://www.python.org/) if it is not already installed.
+4. If PowerShell blocks local scripts, allow locally created scripts for your user:
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
-3. No additional setup required - use convert_audiobook.ps1
+5. Confirm prerequisites are installed:
+```powershell
+ffmpeg -version ffprobe -version python --version
+```
 
-## Usage
+If `python --version` does not work but the Python launcher is installed, try:
+```powershell
+py -3 --version
+```
 
-### Single Audiobook Conversion
-1. Keep your Libby downloaded audiobook files in their original structure:
-- MP3 files in the root directory
-- A `metadata` folder containing `metadata.json`
+## Expected Input Structure
 
-2. Run the conversion script:
+Each audiobook folder should contain MP3 files directly inside the folder.
 
-Unix/Linux/macOS:
-```bash
-./convert_audiobook.sh "path/to/audiobook folder"
+Recommended LibreGrab-style structure:
+```text
+your-audiobook-folder/ 
+├── part001.mp3 
+├── part002.mp3 
+├── part003.mp3 
+└── metadata/ 
+    ├── metadata.json 
+    └── cover.jpg
+```
+
+Metadata is optional. The scripts look for metadata in this order:
+```text
+your-audiobook-folder/ 
+├── metadata/ 
+│   └── metadata.json 
+├── metadata.json 
+└── chapters.json
+```
+
+Cover art is optional. The scripts look for cover images in:
+```text
+metadata/cover.jpg 
+metadata/cover.jpeg 
+metadata/cover.png 
+metadata/cover.webp
+```
+
+## Quick Start
+
+### macOS/Linux
+
+Convert a single audiobook folder:
+```shell
+./convert_audiobook.sh "/path/to/audiobook folder"
+```
+
+Convert multiple audiobook folders:
+```shell
+./convert_audiobook.sh "/path/to/book one" "/path/to/book two"
+```
+
+Convert all audiobook subfolders inside a parent folder:
+```shell
+./convert_audiobook.sh "/path/to/downloaded audiobooks"
+```
+
+Save output files to a custom directory:
+```shell
+./convert_audiobook.sh "/path/to/audiobook folder" --output-dir "/path/to/output folder"
+```
+
+Create Telegram-compatible output:
+```shell
+./convert_audiobook.sh --telegram-compatible "/path/to/audiobook folder"
+```
+
+### Windows PowerShell
+
+Convert a single audiobook folder:
+```powershell
+.\convert_audiobook.ps1 "C:\Path\To\Audiobook Folder"
+```
+
+Convert multiple audiobook folders:
+```powershell
+.\convert_audiobook.ps1 "C:\Path\To\Book One" "C:\Path\To\Book Two"
+```
+
+Convert all audiobook subfolders inside a parent folder:
+```powershell
+.\convert_audiobook.ps1 "C:\Path\To\Downloaded Audiobooks"
+```
+
+Save output files to a custom directory:
+```powershell
+.\convert_audiobook.ps1 "C:\Path\To\Audiobook Folder" -OutputDir "C:\Path\To\Output Folder"
+```
+
+Create Telegram-compatible output:
+```powershell
+.\convert_audiobook.ps1 -TelegramCompatible "C:\Path\To\Audiobook Folder"
+```
+
+## Usage Details
+
+The scripts accept either:
+
+1. One audiobook folder containing `.mp3` files directly inside it
+2. Multiple audiobook folders
+3. A parent folder containing audiobook subfolders
+
+When a parent folder is supplied, the scripts scan only its immediate child folders and process child folders that 
+contain `.mp3` files.
+
+The scripts skip generated folders named:
+```text
+converted .convert-temp
+```
+
+## Output
+
+By default, each converted audiobook is saved to:
+```text
+/converted/
+```
+
+If a custom output directory is provided, all converted files are saved there.
+
+When title and author metadata are available, output files are named like:
+```text
+Author Name - Book Title.m4b
+```
+
+If metadata is missing or does not include an author/title, the output file falls back to the input folder name:
+```text
+Audiobook Folder Name.m4b
+```
+
+Existing output files with the same name are overwritten.
+
+Temporary working files are created under `.convert-temp` inside the output directory and cleaned up automatically.
+
+## Chapter Handling
+
+If metadata is available, chapters are generated from the metadata file.
+
+Supported metadata files:
+```text
+metadata/metadata.json 
+metadata.json 
+chapters.json
+```
+
+If no metadata file is available, the scripts create one chapter per MP3 file using the MP3 filename as the 
+chapter title.
+
+MP3 files are processed in filename sort order, so make sure files are named in playback order, for example:
+```text
+001.mp3 
+002.mp3 
+003.mp3
+```
+
+or:
+```text
+Book Title - Part 01.mp3 
+Book Title - Part 02.mp3 
+Book Title - Part 03.mp3
+```
+
+## Cover Art
+
+If a supported cover image is found in the `metadata` folder, it is embedded as the audiobook cover.
+
+Supported cover filenames:
+```text
+metadata/cover.jpg 
+metadata/cover.jpeg 
+metadata/cover.png 
+metadata/cover.webp
+```
+
+## Telegram-Compatible Mode
+
+Telegram-compatible mode creates lower-bitrate AAC-LC output intended to improve playback compatibility in Telegram.
+
+macOS/Linux:
+```shell
+./convert_audiobook.sh --telegram-compatible "/path/to/audiobook folder"
 ```
 
 Windows:
 ```powershell
-.\convert_audiobook.ps1 -Path "path\to\audiobook folder"
+.\convert_audiobook.ps1 -TelegramCompatible "C:\Path\To\Audiobook Folder"
 ```
 
-### Multiple Audiobooks Conversion
-You can convert multiple audiobooks sequentially by dragging multiple folders:
-```bash
-./convert_audiobook.sh <drag folder 1> <drag folder 2> <drag folder 3>
+This mode uses:
+```text
+AAC-LC 64k audio bitrate 2 channels 44.1 kHz sample rate faststart metadata
 ```
 
-You can also specify a custom output directory for all converted books:
-```bash
-./convert_audiobook.sh --output-dir ~/MyAudiobooks <folder 1> <folder 2> <folder 3>
+After conversion, the script checks the output with `ffprobe` and warns if the file may not be fully 
+Telegram-compatible.
+
+## Helper Script
+
+`convert_chapters.py` is used by the conversion scripts to convert supported JSON metadata into FFmpeg chapter 
+metadata.
+
+It can also be run directly:
+```shell
+python3 convert_chapters.py "/path/to/audiobook folder" --output "/path/to/ffmpeg_chapters.txt"
 ```
 
-The script will:
-- Process each audiobook folder one at a time
-- Create chapter markers using information from metadata.json
-- Combine MP3 files into a single M4B audiobook for each folder
-- Name each output file based on its folder name
-- Save all M4B files to the specified output directory (if --output-dir is used)
-
-Check the `example` directory for a complete working example.
-
-## Directory Structure
-
-```
-your-audiobook-folder/
-├── *.mp3                # Your audiobook MP3 files
-└── metadata/
-    └── metadata.json    # Chapter information file
+Or with a direct metadata file path:
+```shell
+python3 convert_chapters.py "/path/to/metadata.json" --output "/path/to/ffmpeg_chapters.txt"
 ```
 
-## Example Usage
+You usually do not need to run this helper manually.
 
-### Single Book Conversion
-```bash
-./convert_audiobook.sh "~/Downloads/My Audiobook"
+## Troubleshooting
+
+### `ffmpeg` or `ffprobe` is not found
+
+Install FFmpeg and make sure both commands are available in your terminal:
+```shell
+ffmpeg -version ffprobe -version
 ```
 
-### Multiple Books Conversion
-```bash
-./convert_audiobook.sh "~/Downloads/Book1" "~/Downloads/Book2" "~/Downloads/Book3"
+On Windows, confirm FFmpeg's `bin` directory is in your `PATH`.
+
+### Python is not found
+
+Install Python 3 and confirm it is available:
+```shell
+python3 --version
 ```
 
-This repository includes an example directory that demonstrates proper setup:
-- Sample audio files in the correct format
-- A properly formatted metadata.json
-- An example cover image
-- A README explaining usage
-
-## Metadata Format
-
-Create a `metadata.json` file in the metadata folder:
-
-```json
-{
-"chapters": [
-    {
-    "title": "Introduction",
-    "duration": 1234
-    },
-    {
-    "title": "Chapter 1",
-    "duration": 5678
-    }
-]
-}
+On Windows:
+```powershell
+python --version
 ```
 
-Notes:
-- `duration`: Length of chapter in seconds
-- `title`: Chapter title as it will appear in the audiobook
+or:
+```powershell
+py -3 --version
+```
 
-## Output
+### No audiobook folders were found
 
-The script will create an M4B file with:
-- Proper chapter markers
-- Maintains original audio quality and bitrate
-- Embedded cover art (if provided)
-- The same name as your book folder
+Make sure the folder you pass either:
 
+- Contains `.mp3` files directly, or
+- Contains immediate child folders that contain `.mp3` files
+
+The scripts do not recursively scan deeply nested folder structures.
+
+### Chapters are out of order
+
+MP3 files are processed in filename sort order. Rename files so they sort in playback order.
+
+### Metadata chapters are missing
+
+Check that one of these files exists:
+```text
+metadata/metadata.json 
+metadata.json 
+chapters.json
+```
+
+Also make sure Python is installed and available.
+
+### Cover art is not embedded
+
+Check that the cover image is inside the `metadata` folder and uses one of the supported filenames:
+```text
+cover.jpg 
+cover.jpeg 
+cover.png 
+cover.webp
+```
 
 ## Related Projects
 
-- LibbyRip/LibreGrab (https://github.com/HeronErin/LibbyRip) - A userscript that enables downloading audiobooks from Libby/Overdrive in a format compatible with this tool. Also available on [Greasyfork](https://greasyfork.org/en/scripts/498782-libregrab).
-
-## Support
-
-If you encounter any issues:
-1. Make sure FFmpeg is installed and accessible
-2. Check that your files follow the correct structure
-3. Verify your metadata.json format
-4. Check the terminal output for any error messages
-
+- [LibbyRip/LibreGrab](https://github.com/PsychedelicPalimpsest/LibbyRip) - A userscript that enables downloading 
+- Libby/OverDrive audiobooks in a format compatible with this tool. Also available on 
+[GreasyFork](https://greasyfork.org/en/scripts/498782-libregrab).
