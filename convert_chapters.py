@@ -2,6 +2,9 @@
 import argparse
 import json
 import os
+import sys
+
+sys.stdout.reconfigure(encoding='utf-8')
 
 
 def get_json_path(input_path):
